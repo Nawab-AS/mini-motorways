@@ -1,6 +1,7 @@
 export default function loadRoads(...args) {
     class roads {
         loaded = false;
+        tileSize = 32;
         constructor(maps) {
             this.maps = {};
             this.currentMap = null;
@@ -20,32 +21,27 @@ export default function loadRoads(...args) {
             });
         }
 
-        setMap(path) {
-            if (!this.loaded) { // wait untill all maps are loaded
-                setTimeout(() => this.setMap(path), 100);
-                return;
-            }
+        async setMap(path) {
+            while (!this.loaded) { await new Promise(resolve => setTimeout(resolve, 100)); }
             if (!this.maps[path]) throw new Error(`Map not loaded: ${path}`);
             this.currentMap = this.maps[path];
-        }
 
-        drawTilemap(tileSize = 32) {
+
+            // draw Tiles
             const legend = {
-                '░': 'grass',
-                '▒': 'dirt',
-                '▓': 'mountain',
-                '~': 'water',
+                '░': '#22CC55', // grass
+                '▒': '#964B00', // dirt
+                '▓': '#555555', // mountain
+                '~': '#0000FF', // water
             };
-            for (let y = 0; y < this.maps.length; y++) {
-                for (let x = 0; x < this.maps[y].length; x++) {
-                    const char = this.maps[y][x];
-                    const tile = legend[char];
-                    if (tile) {
+            for (let y = 0; y < this.currentMap.length; y++) {
+                for (let x = 0; x < this.currentMap[y].length; x++) {
+                    const char = this.currentMap[y][x];
+                    if (legend[char]) {
                         add([
-                            sprite(`tiles/${tile}.png`),
-                            pos(x * tileSize, y * tileSize),
-                            area(),
-                            z(0),
+                            pos(x * this.tileSize, y * this.tileSize),
+                            color(legend[char]),
+                            rect(this.tileSize, this.tileSize),
                         ]);
                     }
                 }

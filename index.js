@@ -1,4 +1,4 @@
-import kaplay from "https://unpkg.com/kaplay@3001.0.19/dist/kaplay.mjs";
+import kaplay from "./kaplay.mjs";
 import loadCars from "./car.js";
 import loadRoads from "./roads.js";
 
@@ -22,15 +22,23 @@ const Car = loadCars();
 const Roads = loadRoads(['level1.txt', 'level2.txt']);
 
 
+let numCars = 10;
+scene("main", async () => {
+    await Roads.setMap('level1.txt');
+    let cars = [];
+    for (let i = 0; i < numCars; i++) {
+        cars.push(new Car(Car.colors[i % Car.colors.length], [50 + 25 * i, 50]));
+    }
 
-scene("main", () => {
-    Roads.setMap('level1.txt');
-    const redCar = new Car("blue", [50, 50]);
     onKeyDown("right", () => {
-        redCar.move(200);
+        cars.forEach(car => {
+            car.move(200);
+        });
     });
     onKeyDown("up", () => {
-        redCar.rotate(5);
+        cars.forEach(car => {
+            car.rotate(5);
+        });
     });
 });
 
