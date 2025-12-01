@@ -19,12 +19,17 @@ kaplay({
 
 loadRoot("./assets");
 const Car = loadCars();
-const Roads = loadRoads(['level1.txt', 'level2.txt']);
+const Roads = loadRoads();
 
 
 let numCars = 10;
 scene("main", async () => {
-    await Roads.setMap('level1.txt');
+    Roads.drawMap();
+    for (let i = 0; i < 3; i++) {
+        // for (let j = 0; j < 0; j++) {
+        console.log(Roads.addRoad(5 + i, 5));
+        // }
+    }
     let cars = [];
     for (let i = 0; i < numCars; i++) {
         cars.push(new Car(Car.colors[i % Car.colors.length], [50 + 25 * i, 50]));
