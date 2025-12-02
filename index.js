@@ -1,14 +1,13 @@
+
 import kaplay from "./kaplay.mjs";
 import loadCars from "./car.js";
 import loadRoads from "./roads.js";
 
 const size = { width: 1280, height: 720, margin: 0.01 };
-
 const scale = Math.min(
     window.innerWidth * (1 - size.margin * 2) / size.width,
     window.innerHeight * (1 - size.margin * 2) / size.height
 );
-
 kaplay({
     width: size.width,
     height: size.height,
@@ -16,20 +15,29 @@ kaplay({
     scale: scale,
 });
 
-
 loadRoot("./assets");
-const Car = loadCars();
+const CarManager = loadCars();
 const Roads = loadRoads();
 let editMode = false;
-
 
 scene("game", () => {
     editMode = false;
     Roads.resetMap();
     Roads.setTotalRoads(50);
     Roads.generateLevel();
-    Roads.startOrderGeneration();
 
+    // Start order generation after 10 seconds
+    setTimeout(() => {
+        Roads.startOrderGeneration();
+    }, 10000);
+
+    // CarManager handles all car logic
+    CarManager.init(Roads);
+
+    onUpdate(() => {
+        CarManager.update();
+        roadCounter.text = `Roads: ${Roads.getRoadCount()}/${Roads.getTotalRoads()}`;
+    });
 
     const editButton = add([
         pos(width()/2, 10),
@@ -47,7 +55,6 @@ scene("game", () => {
         anchor("center"),
         z(editButton.z - 100),
     ]);
-
 
     editButton.onClick(() => {
         editMode = !editMode;
@@ -69,21 +76,12 @@ scene("game", () => {
         opacity(0),
     ]);
 
-    onUpdate(() => {
-        roadCounter.text = `Roads: ${Roads.getRoadCount()}/${Roads.getTotalRoads()}`;
-    });
-
     onClick((_) => {
         if (!editMode) return;
-
         const pos = mousePos();
-        
         const x = Math.floor(pos.x / Roads.tileSize);
         const y = Math.floor(pos.y / Roads.tileSize);
-        console.log(x, y);
-        
         if (Roads.isProtectedRoad(x, y)) return;
-        
         // Toggle road
         if (Roads.hasRoad(x, y)) {
             Roads.removeRoad(x, y);

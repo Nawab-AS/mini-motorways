@@ -91,15 +91,47 @@ export default function loadRoads(...args) {
             for (const color of selectedColors) {
                 const storeCount = Math.floor(Math.random() * 2) + 1;
                 
+                // Find houses of this color
+                const colorHouses = [];
+                for (const pos of placedPositions) {
+                    const key = `${pos.x},${pos.y}`;
+                    const houseData = this.houses.get(key);
+                    if (houseData && houseData.color === color) {
+                        colorHouses.push(pos);
+                    }
+                }
+                
                 for (let i = 0; i < storeCount; i++) {
-                    const pos = findValidPosition(true);
-                    if (!pos) continue;
+                    let storePos = null;
+                    const maxAttempts = 100;
+                    
+                    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                        const pos = findValidPosition(true);
+                        if (!pos) continue;
+                        
+                        // Check if within 9 tiles of any house of matching color
+                        let withinRange = false;
+                        for (const house of colorHouses) {
+                            const distance = Math.abs(house.x - pos.x) + Math.abs(house.y - pos.y);
+                            if (distance <= 9) {
+                                withinRange = true;
+                                break;
+                            }
+                        }
+                        
+                        if (withinRange) {
+                            storePos = pos;
+                            break;
+                        }
+                    }
+                    
+                    if (!storePos) continue;
                     
                     const orientation = orientations[Math.floor(Math.random() * orientations.length)];
-                    const success = this.addStore(pos.x, pos.y, orientation, color);
+                    const success = this.addStore(storePos.x, storePos.y, orientation, color);
                     
                     if (success) {
-                        placedPositions.push(pos);
+                        placedPositions.push(storePos);
                     }
                 }
             }
@@ -321,42 +353,15 @@ export default function loadRoads(...args) {
                 const px = x * this.tileSize;
                 const py = y * this.tileSize;
                 
-                // Draw arrow indicators above the store
-                const arrowSize = 8;
-                const spacing = 12;
-                const maxDisplay = Math.min(orderCount, 5);
-                const startX = px + this.tileSize - (maxDisplay - 1) * spacing / 2;
-                
-                for (let i = 0; i < maxDisplay; i++) {
-                    const arrowX = startX + i * spacing;
-                    const arrowY = py + this.tileSize / 2 - 8;
-                    
-                    // Triangle pointing down
-                    add([
-                        pos(arrowX, arrowY),
-                        polygon([
-                            vec2(0, -arrowSize),
-                            vec2(-arrowSize/2, 0),
-                            vec2(arrowSize/2, 0),
-                        ]),
-                        color(255, 200, 0),
-                        anchor("center"),
-                        "order-indicator",
-                        z(3),
-                    ]);
-                }
-                
-                // Show number if more than 5 orders
-                if (orderCount > 5) {
-                    add([
-                        pos(px + this.tileSize, py + this.tileSize / 2 - 8),
-                        text(`${orderCount}`, { size: 12, font: "monospace" }),
-                        color(255, 200, 0),
-                        anchor("center"),
-                        "order-indicator",
-                        z(3),
-                    ]);
-                }
+                // Display order count as number
+                add([
+                    pos(px + this.tileSize, py + this.tileSize / 2),
+                    text(`${orderCount}`, { size: 20, font: "monospace" }),
+                    color(255, 200, 0),
+                    anchor("center"),
+                    "order-indicator",
+                    z(3),
+                ]);
             }
         }
 
@@ -365,6 +370,8 @@ export default function loadRoads(...args) {
             if (!this.stores.has(key)) return false;
             
             const currentOrders = this.orders.get(key) || 0;
+            if (currentOrders >= 5) return false; // Max 5 orders per store
+            
             this.orders.set(key, currentOrders + 1);
             this.#generateOrderIndicators();
             return true;
@@ -392,21 +399,119 @@ export default function loadRoads(...args) {
             return positions;
         }
 
-        startOrderGeneration() {
-            this.orderTimer = setInterval(() => {
-                const storeKeys = Array.from(this.stores.keys());
-                if (storeKeys.length === 0) return;
+        getHousePositions() {
+            const positions = [];
+            for (const [key, houseData] of this.houses) {
+                const [x, y] = key.split(',').map(Number);
+                positions.push({ x, y, color: houseData.color });
+            }
+            return positions;
+        }
+
+        getStoresWithOrders() {
+            const storesWithOrders = [];
+            for (const [key, orderCount] of this.orders) {
+                if (orderCount > 0) {
+                    const [x, y] = key.split(',').map(Number);
+                    const storeData = this.stores.get(key);
+                    storesWithOrders.push({ x, y, color: storeData.color, orders: orderCount });
+                }
+            }
+            storesWithOrders.sort((a, b) => b.orders - a.orders);
+            return storesWithOrders;
+        }
+
+        findPath(startX, startY, endX, endY) {
+            // A* pathfinding algorithm
+            const openSet = [{ x: startX, y: startY, g: 0, h: 0, f: 0, parent: null }];
+            const closedSet = new Set();
+            
+            const heuristic = (x, y) => Math.abs(x - endX) + Math.abs(y - endY);
+            
+            while (openSet.length > 0) {
+                // Find node with lowest f score
+                openSet.sort((a, b) => a.f - b.f);
+                const current = openSet.shift();
                 
-                // Randomly pick a store to add an order
-                const randomKey = storeKeys[Math.floor(Math.random() * storeKeys.length)];
-                const [x, y] = randomKey.split(',').map(Number);
-                this.addOrder(x, y);
-            }, 3000); // Add order every 3 seconds
+                // Reached destination
+                if (current.x === endX && current.y === endY) {
+                    const path = [];
+                    let node = current;
+                    while (node) {
+                        path.unshift({ x: node.x, y: node.y });
+                        node = node.parent;
+                    }
+                    return path;
+                }
+                
+                closedSet.add(`${current.x},${current.y}`);
+                
+                // Check neighbors
+                for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                    const nx = current.x + dx;
+                    const ny = current.y + dy;
+                    const nKey = `${nx},${ny}`;
+                    
+                    // Skip if already visited
+                    if (closedSet.has(nKey)) continue;
+                    
+                    // Skip if no road
+                    if (!this.roads.has(nKey)) continue;
+                    
+                    const g = current.g + 1;
+                    const h = heuristic(nx, ny);
+                    const f = g + h;
+                    
+                    // Check if already in open set
+                    const existing = openSet.find(n => n.x === nx && n.y === ny);
+                    if (existing) {
+                        if (g < existing.g) {
+                            existing.g = g;
+                            existing.f = f;
+                            existing.parent = current;
+                        }
+                    } else {
+                        openSet.push({ x: nx, y: ny, g, h, f, parent: current });
+                    }
+                }
+            }
+            
+            return null; // No path found
+        }
+
+        startOrderGeneration() {
+            
+            const generateOrders = () => {
+                // For each house, potentially generate an order for a matching store
+                for (const [houseKey, houseData] of this.houses) {
+                    // Find stores matching this house color
+                    const matchingStores = [];
+                    for (const [storeKey, storeData] of this.stores) {
+                        if (storeData.color === houseData.color) {
+                            matchingStores.push(storeKey);
+                        }
+                    }
+                    
+                    
+                    if (matchingStores.length === 0) continue;
+                    
+                    // Randomly pick a matching store to add an order
+                    const randomStoreKey = matchingStores[Math.floor(Math.random() * matchingStores.length)];
+                    const [x, y] = randomStoreKey.split(',').map(Number);
+                    this.addOrder(x, y);
+                }
+                
+                // Schedule next order generation with random delay (5-10 seconds)
+                const delay = 5000 + Math.random() * 5000;
+                this.orderTimer = setTimeout(generateOrders, delay);
+            };
+            
+            generateOrders();
         }
 
         stopOrderGeneration() {
             if (this.orderTimer) {
-                clearInterval(this.orderTimer);
+                clearTimeout(this.orderTimer);
                 this.orderTimer = null;
             }
         }
@@ -571,6 +676,18 @@ export default function loadRoads(...args) {
 
         isProtectedRoad(x, y) {
             return this.protectedRoads.has(`${x},${y}`);
+        }
+
+        getAdjacentRoad(x, y) {
+            // Find a road tile adjacent to this position
+            for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                const nx = x + dx;
+                const ny = y + dy;
+                if (this.roads.has(`${nx},${ny}`)) {
+                    return { x: nx, y: ny };
+                }
+            }
+            return null;
         }
     }
 
