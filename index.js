@@ -25,11 +25,11 @@ const Roads = loadRoads();
 let numCars = 10;
 scene("main", async () => {
     Roads.drawMap();
-    for (let i = 0; i < 3; i++) {
-        // for (let j = 0; j < 0; j++) {
+    for (let i = 0; i < 4; i++) {
         console.log(Roads.addRoad(5 + i, 5));
-        // }
     }
+    Roads.addHouse(7, 4, 'right', 'blue');
+    Roads.addStore(10, 7, 'up', 'red');
     let cars = [];
     for (let i = 0; i < numCars; i++) {
         cars.push(new Car(Car.colors[i % Car.colors.length], [50 + 25 * i, 50]));
