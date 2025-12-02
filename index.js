@@ -27,12 +27,8 @@ scene("game", () => {
     editMode = false;
     Roads.resetMap();
     Roads.setTotalRoads(50);
-    
-    for (let i = 0; i < 4; i++) {
-        Roads.addRoad(5 + i, 5);
-    }
-    Roads.addHouse(7, 4, 'right', 'blue');
-    Roads.addStore(10, 7, 'up', 'red');
+    Roads.generateLevel();
+    Roads.startOrderGeneration();
 
 
     const editButton = add([

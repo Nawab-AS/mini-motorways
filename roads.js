@@ -7,6 +7,7 @@ export default function loadRoads(...args) {
             this.roads = new Map();
             this.houses = new Map();
             this.stores = new Map();
+            this.orders = new Map();
             this.totalRoads = 50;
             this.protectedRoads = new Set();
         }
@@ -15,6 +16,7 @@ export default function loadRoads(...args) {
             this.roads = new Map();
             this.houses = new Map();
             this.stores = new Map();
+            this.orders = new Map();
             this.protectedRoads = new Set();
             get("bg").forEach(display => destroy(display));
 
@@ -32,6 +34,75 @@ export default function loadRoads(...args) {
                 z(-1),
                 "bg"
             ])
+        }
+
+        generateLevel() {
+            const availableColors = ['blue', 'red', 'green'];
+            const selectedColors = [];
+            
+            // Pick 2 random colors
+            for (let i = 0; i < 2; i++) {
+                const randomIndex = Math.floor(Math.random() * availableColors.length);
+                selectedColors.push(availableColors[randomIndex]);
+                availableColors.splice(randomIndex, 1);
+            }
+            
+            const orientations = ['up', 'down', 'left', 'right'];
+            const minDistance = 5;
+            const placedPositions = [];
+            
+            // Helper function to check if position is far enough from existing placements
+            const isFarEnough = (x, y) => {
+                for (const pos of placedPositions) {
+                    const distance = Math.abs(pos.x - x) + Math.abs(pos.y - y);
+                    if (distance < minDistance) return false;
+                }
+                return true;
+            };
+            
+            // Helper function to find valid position
+            const findValidPosition = (isStore = false) => {
+                const maxAttempts = 100;
+                for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                    const x = Math.floor(Math.random() * (roads.size[0] - 4)) + 2;
+                    const y = Math.floor(Math.random() * (roads.size[1] - 4)) + 2;
+                    
+                    if (isFarEnough(x, y)) {
+                        return { x, y };
+                    }
+                }
+                return null;
+            };
+            
+            // Place houses
+            for (const color of selectedColors) {
+                const pos = findValidPosition();
+                if (!pos) continue;
+                
+                const orientation = orientations[Math.floor(Math.random() * orientations.length)];
+                const success = this.addHouse(pos.x, pos.y, orientation, color);
+                
+                if (success) {
+                    placedPositions.push(pos);
+                }
+            }
+            
+            // Place stores (1-2 stores per color)
+            for (const color of selectedColors) {
+                const storeCount = Math.floor(Math.random() * 2) + 1;
+                
+                for (let i = 0; i < storeCount; i++) {
+                    const pos = findValidPosition(true);
+                    if (!pos) continue;
+                    
+                    const orientation = orientations[Math.floor(Math.random() * orientations.length)];
+                    const success = this.addStore(pos.x, pos.y, orientation, color);
+                    
+                    if (success) {
+                        placedPositions.push(pos);
+                    }
+                }
+            }
         }
 
         placeHouse() {
@@ -141,6 +212,7 @@ export default function loadRoads(...args) {
 
             // Add store
             this.stores.set(key, { orientation, color });
+            this.orders.set(key, 0);
 
             // Add roads
             const offsets = {
@@ -179,6 +251,7 @@ export default function loadRoads(...args) {
 
             // Remove the store
             this.stores.delete(key);
+            this.orders.delete(key);
 
             // Remove roads
             const offsets = {
@@ -233,6 +306,108 @@ export default function loadRoads(...args) {
                     "store",
                     z(2),
                 ]);
+            }
+            
+            this.#generateOrderIndicators();
+        }
+
+        #generateOrderIndicators() {
+            get("order-indicator").forEach(display => destroy(display));
+
+            for (const [key, orderCount] of this.orders) {
+                if (orderCount === 0) continue;
+                
+                const [x, y] = key.split(',').map(Number);
+                const px = x * this.tileSize;
+                const py = y * this.tileSize;
+                
+                // Draw arrow indicators above the store
+                const arrowSize = 8;
+                const spacing = 12;
+                const maxDisplay = Math.min(orderCount, 5);
+                const startX = px + this.tileSize - (maxDisplay - 1) * spacing / 2;
+                
+                for (let i = 0; i < maxDisplay; i++) {
+                    const arrowX = startX + i * spacing;
+                    const arrowY = py + this.tileSize / 2 - 8;
+                    
+                    // Triangle pointing down
+                    add([
+                        pos(arrowX, arrowY),
+                        polygon([
+                            vec2(0, -arrowSize),
+                            vec2(-arrowSize/2, 0),
+                            vec2(arrowSize/2, 0),
+                        ]),
+                        color(255, 200, 0),
+                        anchor("center"),
+                        "order-indicator",
+                        z(3),
+                    ]);
+                }
+                
+                // Show number if more than 5 orders
+                if (orderCount > 5) {
+                    add([
+                        pos(px + this.tileSize, py + this.tileSize / 2 - 8),
+                        text(`${orderCount}`, { size: 12, font: "monospace" }),
+                        color(255, 200, 0),
+                        anchor("center"),
+                        "order-indicator",
+                        z(3),
+                    ]);
+                }
+            }
+        }
+
+        addOrder(x, y) {
+            const key = `${x},${y}`;
+            if (!this.stores.has(key)) return false;
+            
+            const currentOrders = this.orders.get(key) || 0;
+            this.orders.set(key, currentOrders + 1);
+            this.#generateOrderIndicators();
+            return true;
+        }
+
+        removeOrder(x, y) {
+            const key = `${x},${y}`;
+            if (!this.stores.has(key)) return false;
+            
+            const currentOrders = this.orders.get(key) || 0;
+            if (currentOrders > 0) {
+                this.orders.set(key, currentOrders - 1);
+                this.#generateOrderIndicators();
+                return true;
+            }
+            return false;
+        }
+
+        getStorePositions() {
+            const positions = [];
+            for (const [key, storeData] of this.stores) {
+                const [x, y] = key.split(',').map(Number);
+                positions.push({ x, y, color: storeData.color });
+            }
+            return positions;
+        }
+
+        startOrderGeneration() {
+            this.orderTimer = setInterval(() => {
+                const storeKeys = Array.from(this.stores.keys());
+                if (storeKeys.length === 0) return;
+                
+                // Randomly pick a store to add an order
+                const randomKey = storeKeys[Math.floor(Math.random() * storeKeys.length)];
+                const [x, y] = randomKey.split(',').map(Number);
+                this.addOrder(x, y);
+            }, 3000); // Add order every 3 seconds
+        }
+
+        stopOrderGeneration() {
+            if (this.orderTimer) {
+                clearInterval(this.orderTimer);
+                this.orderTimer = null;
             }
         }
 
