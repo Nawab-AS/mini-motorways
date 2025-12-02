@@ -12,6 +12,7 @@ export default function loadCars() {
 
                 anchor("center"),
                 sprite("carShadow"),
+                z(0.5),
             ]);
 
             this.object = add([
@@ -23,6 +24,7 @@ export default function loadCars() {
                 sprite(`${color}Car`),
                 "car",
                 color,
+                z(1),
             ]);
         }
 

@@ -20,31 +20,81 @@ kaplay({
 loadRoot("./assets");
 const Car = loadCars();
 const Roads = loadRoads();
+let editMode = false;
 
 
-let numCars = 10;
-scene("main", async () => {
-    Roads.drawMap();
+scene("game", () => {
+    editMode = false;
+    Roads.resetMap();
+    Roads.setTotalRoads(50);
+    
     for (let i = 0; i < 4; i++) {
-        console.log(Roads.addRoad(5 + i, 5));
+        Roads.addRoad(5 + i, 5);
     }
     Roads.addHouse(7, 4, 'right', 'blue');
     Roads.addStore(10, 7, 'up', 'red');
-    let cars = [];
-    for (let i = 0; i < numCars; i++) {
-        cars.push(new Car(Car.colors[i % Car.colors.length], [50 + 25 * i, 50]));
-    }
 
-    onKeyDown("right", () => {
-        cars.forEach(car => {
-            car.move(200);
-        });
+
+    const editButton = add([
+        pos(width()/2, 10),
+        anchor("center"),
+        rect(150, 30),
+        color(12, 72, 212, 1),
+        z(1000),
+        area(),
+    ]);
+
+    editButton.add([
+        text("Edit Roads", { size: 24, font: "monospace" }),
+        pos(0, 4),
+        color(255, 255, 255),
+        anchor("center"),
+        z(editButton.z - 100),
+    ]);
+
+
+    editButton.onClick(() => {
+        editMode = !editMode;
+        editButton.get("text")[0].text = editMode ? "Done Editing" : "Edit Roads";
+        editButton.width = editButton.get("text")[0].width + 20;
+        roadCounter.opacity = editMode ? 1 : 0;
+        if (editMode) {
+            Roads.showEditMode();
+        } else {
+            Roads.hideEditMode();
+        }
     });
-    onKeyDown("up", () => {
-        cars.forEach(car => {
-            car.rotate(5);
-        });
+
+    // Road counter UI
+    const roadCounter = add([
+        text("", { size: 20, font: "monospace" }),
+        pos(width()/2 + 140, 4),
+        z(1000),
+        opacity(0),
+    ]);
+
+    onUpdate(() => {
+        roadCounter.text = `Roads: ${Roads.getRoadCount()}/${Roads.getTotalRoads()}`;
+    });
+
+    onClick((_) => {
+        if (!editMode) return;
+
+        const pos = mousePos();
+        
+        const x = Math.floor(pos.x / Roads.tileSize);
+        const y = Math.floor(pos.y / Roads.tileSize);
+        console.log(x, y);
+        
+        if (Roads.isProtectedRoad(x, y)) return;
+        
+        // Toggle road
+        if (Roads.hasRoad(x, y)) {
+            Roads.removeRoad(x, y);
+        } else {
+            Roads.addRoad(x, y);
+        }
     });
 });
 
-go("main");
+go("game");

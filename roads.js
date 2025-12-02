@@ -4,40 +4,34 @@ export default function loadRoads(...args) {
         tileSize = 32;
         static size = [40, 23]
         constructor() {
-            this.map = roads.getMap();
             this.roads = new Map();
             this.houses = new Map();
             this.stores = new Map();
-            this.grid = false;
+            this.totalRoads = 50;
+            this.protectedRoads = new Set();
         }
 
-        static getMap(){
-            let map = [];
-            for (let y = 0; y < roads.size[1]; y++) {
-                map.push([]);
-                for (let x = 0; x < roads.size[0]; x++) {
-                    if (x == 0 || x == roads.size[0] - 1 || y == 0 || y == roads.size[1] - 1) {
-                        map[y].push(false);
-                        continue;
-                    }
-                    map[y].push(true);
-                }
-            }
-            return map;
-        }
+        resetMap() {
+            this.roads = new Map();
+            this.houses = new Map();
+            this.stores = new Map();
+            this.protectedRoads = new Set();
+            get("bg").forEach(display => destroy(display));
 
-        drawMap() {
-            for (let y = 0; y < this.map.length; y++) {
-                for (let x = 0; x < this.map[y].length; x++) {
-                    const char = this.map[y][x];
-                    add([
-                        pos(x * this.tileSize, y * this.tileSize - 8),
-                        color(char ? '#78cd6f' : '#8ca7ae'),
-                        rect(this.tileSize, this.tileSize),
-                        z(-1),
-                    ]);
-                }
-            }
+            add([
+                pos(0, 0),
+                color('#8ca7ae'),
+                rect(roads.size[0] * this.tileSize, roads.size[1] * this.tileSize),
+                z(-2),
+                "bg"
+            ])
+            add([
+                pos(this.tileSize, this.tileSize),
+                color('#78cd6f'),
+                rect((roads.size[0]-2) * this.tileSize, (roads.size[1]-2) * this.tileSize),
+                z(-1),
+                "bg"
+            ])
         }
 
         placeHouse() {
@@ -56,6 +50,7 @@ export default function loadRoads(...args) {
 
             const key = `${x},${y}`;
             if (this.roads.has(key)) return false; // road exists
+            if (this.roads.size >= this.totalRoads) return false;
 
             // Add the road
             this.roads.set(key, true);
@@ -65,6 +60,8 @@ export default function loadRoads(...args) {
 
         removeRoad(x, y) {
             const key = `${x},${y}`;
+            
+            if (this.protectedRoads.has(key)) return false;
             
             // Remove road
             this.roads.delete(key);
@@ -95,6 +92,7 @@ export default function loadRoads(...args) {
             };
             const [dx, dy] = offsets[orientation];
             this.roads.set(`${x + dx},${y + dy}`, true);
+            this.protectedRoads.add(`${x + dx},${y + dy}`);
 
             this.#generateRoads();
             this.#generateHouses();
@@ -123,6 +121,7 @@ export default function loadRoads(...args) {
             };
             const [dx, dy] = offsets[houseData.orientation];
             this.roads.delete(`${x + dx},${y + dy}`);
+            this.protectedRoads.delete(`${x + dx},${y + dy}`);
 
             this.#generateRoads();
             this.#generateHouses();
@@ -160,6 +159,7 @@ export default function loadRoads(...args) {
                     }
                     return false;
                 }
+                this.protectedRoads.add(`${x + dx},${y + dy}`);
             }
 
             this.#generateRoads();
@@ -190,6 +190,7 @@ export default function loadRoads(...args) {
             const roadOffsets = offsets[storeData.orientation];
             for (const [dx, dy] of roadOffsets) {
                 this.roads.delete(`${x + dx},${y + dy}`);
+                this.protectedRoads.delete(`${x + dx},${y + dy}`);
             }
 
             this.#generateRoads();
@@ -211,7 +212,7 @@ export default function loadRoads(...args) {
                     anchor("center"),
                     scale(this.tileSize / 500),
                     "house",
-                    z(1)
+                    z(2)
                 ]);
             }
         }
@@ -230,7 +231,7 @@ export default function loadRoads(...args) {
                     anchor("center"),
                     scale(this.tileSize / 250),
                     "store",
-                    z(1),
+                    z(2),
                 ]);
             }
         }
@@ -320,6 +321,81 @@ export default function loadRoads(...args) {
                     }
                 }
             }
+        }
+
+        showEditMode() {
+            const [width, height] = roads.size;
+            const tileSize = this.tileSize;
+            
+            // vertical lines
+            for (let i = 0; i <= width; i++) {
+                add([
+                    pos(i * tileSize, tileSize),
+                    rect(2, (height - 2) * tileSize),
+                    color(200, 200, 200),
+                    opacity(0.5),
+                    anchor("top"),
+                    "edit-mode",
+                    z(999),
+                ]);
+            }
+            
+            // horizontal lines
+            for (let i = 1; i <= height; i++) {
+                add([
+                    pos(tileSize, i * tileSize),
+                    rect((width - 2) * tileSize, 2),
+                    color(255, 255, 255),
+                    opacity(0.5),
+                    anchor("left"),
+                    "edit-mode",
+                    z(999),
+                ]);
+            }
+            
+            // Show protected roads overlay
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const key = `${x},${y}`;
+                    if (this.protectedRoads.has(key)) {
+                        add([
+                            pos(x * tileSize, y * tileSize),
+                            rect(tileSize, tileSize),
+                            color(255, 0, 0),
+                            opacity(0.3),
+                            "edit-mode",
+                            z(998),
+                        ]);
+                    }
+                }
+            }
+        }
+
+
+        // low-level helper functions (for index.js)
+
+        hideEditMode() {
+            get("edit-mode").forEach(display => destroy(display));
+        }
+
+        setTotalRoads(count) {
+            this.totalRoads = count;
+        }
+
+        getTotalRoads() {
+            return this.totalRoads;
+        }
+
+        getRoadCount() {
+            return this.roads.size;
+        }
+
+        hasRoad(x, y) {
+            return this.roads.has(`${x},${y}`);
+        }
+
+        isProtectedRoad(x, y) {
+            return this.protectedRoads.has(`${x},${y}`);
         }
     }
 
