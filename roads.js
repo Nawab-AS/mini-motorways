@@ -417,23 +417,17 @@ export default function loadRoads(...args) {
                     storesWithOrders.push({ x, y, color: storeData.color, orders: orderCount });
                 }
             }
-            storesWithOrders.sort((a, b) => b.orders - a.orders);
             return storesWithOrders;
         }
 
         findPath(startX, startY, endX, endY) {
-            // A* pathfinding algorithm
+            // A* pathfinding for cars
             const openSet = [{ x: startX, y: startY, g: 0, h: 0, f: 0, parent: null }];
             const closedSet = new Set();
-            
             const heuristic = (x, y) => Math.abs(x - endX) + Math.abs(y - endY);
-            
             while (openSet.length > 0) {
-                // Find node with lowest f score
                 openSet.sort((a, b) => a.f - b.f);
                 const current = openSet.shift();
-                
-                // Reached destination
                 if (current.x === endX && current.y === endY) {
                     const path = [];
                     let node = current;
@@ -443,26 +437,16 @@ export default function loadRoads(...args) {
                     }
                     return path;
                 }
-                
                 closedSet.add(`${current.x},${current.y}`);
-                
-                // Check neighbors
                 for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
                     const nx = current.x + dx;
                     const ny = current.y + dy;
                     const nKey = `${nx},${ny}`;
-                    
-                    // Skip if already visited
                     if (closedSet.has(nKey)) continue;
-                    
-                    // Skip if no road
                     if (!this.roads.has(nKey)) continue;
-                    
                     const g = current.g + 1;
                     const h = heuristic(nx, ny);
                     const f = g + h;
-                    
-                    // Check if already in open set
                     const existing = openSet.find(n => n.x === nx && n.y === ny);
                     if (existing) {
                         if (g < existing.g) {
@@ -475,8 +459,7 @@ export default function loadRoads(...args) {
                     }
                 }
             }
-            
-            return null; // No path found
+            return null;
         }
 
         startOrderGeneration() {
@@ -679,7 +662,7 @@ export default function loadRoads(...args) {
         }
 
         getAdjacentRoad(x, y) {
-            // Find a road tile adjacent to this position
+            // Find a road tile next to this position
             for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
                 const nx = x + dx;
                 const ny = y + dy;

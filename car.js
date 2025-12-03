@@ -105,110 +105,6 @@ export default function loadCars() {
         }
     }
 
-    // CarManager class for OOP car management
-    class CarManager {
-        constructor() {
-            this.activeCars = [];
-            this.carsPerHouse = new Map();
-            this.houseLastSpawn = new Map();
-            this.carSpawnTimer = 0.5;
-            this.timeSinceLastCheck = 0;
-            this.lastTime = Date.now();
-            this.roads = null;
-        }
-
-        init(roads) {
-            this.roads = roads;
-            this.activeCars = [];
-            this.carsPerHouse = new Map();
-            this.houseLastSpawn = new Map();
-            this.timeSinceLastCheck = 0;
-            this.lastTime = Date.now();
-        }
-
-        update() {
-            const now = Date.now();
-            const dt = (now - this.lastTime) / 1000;
-            this.lastTime = now;
-
-            // Update all active cars
-            for (let i = this.activeCars.length - 1; i >= 0; i--) {
-                const carInstance = this.activeCars[i];
-                carInstance.update(dt);
-                if (!carInstance.active) {
-                    this.activeCars.splice(i, 1);
-                }
-            }
-
-            // Check for new orders to spawn cars
-            this.timeSinceLastCheck += dt;
-            if (this.timeSinceLastCheck >= this.carSpawnTimer) {
-                this.timeSinceLastCheck = 0;
-                this.spawnCars();
-            }
-        }
-
-        spawnCars() {
-            if (!this.roads) return;
-            const storesWithOrders = this.roads.getStoresWithOrders();
-            const houses = this.roads.getHousePositions();
-            storesWithOrders.sort((a, b) => b.orders - a.orders);
-            for (const store of storesWithOrders) {
-                const matchingHouses = houses.filter(h => h.color === store.color);
-                if (matchingHouses.length === 0) continue;
-                let house = null;
-                const currentTime = Date.now();
-                const availableHouses = matchingHouses.filter(h => {
-                    const houseKey = `${h.x},${h.y}`;
-                    const carCount = this.carsPerHouse.get(houseKey) || 0;
-                    const lastSpawn = this.houseLastSpawn.get(houseKey) || 0;
-                    const timeSinceSpawn = currentTime - lastSpawn;
-                    return carCount < 2 && timeSinceSpawn >= 4000;
-                });
-                if (availableHouses.length === 0) continue;
-                house = availableHouses[Math.floor(Math.random() * availableHouses.length)];
-                const houseKey = `${house.x},${house.y}`;
-                const houseRoad = this.roads.getAdjacentRoad(house.x, house.y);
-                const storeRoad = this.roads.getAdjacentRoad(store.x, store.y);
-                if (!houseRoad || !storeRoad) continue;
-                const pathToStore = this.roads.findPath(houseRoad.x, houseRoad.y, storeRoad.x, storeRoad.y);
-                if (!pathToStore) continue;
-                const pathToHome = this.roads.findPath(storeRoad.x, storeRoad.y, houseRoad.x, houseRoad.y);
-                if (!pathToHome) continue;
-                const tileSize = this.roads.tileSize;
-                const pathToStorePixels = pathToStore.map(p => ({
-                    x: (p.x + 0.5) * tileSize,
-                    y: (p.y + 0.5) * tileSize
-                }));
-                const pathToHomePixels = pathToHome.map(p => ({
-                    x: (p.x + 0.5) * tileSize,
-                    y: (p.y + 0.5) * tileSize
-                }));
-                const startPos = [(house.x + 0.5) * tileSize, (house.y + 0.5) * tileSize];
-                const fullPath = [...pathToStorePixels, ...pathToHomePixels];
-                const storeWaypointIndex = pathToStorePixels.length;
-                const carInstance = new car(
-                    store.color,
-                    startPos,
-                    fullPath,
-                    () => {
-                        carInstance.destroy();
-                        const currentCount = this.carsPerHouse.get(houseKey) || 0;
-                        this.carsPerHouse.set(houseKey, Math.max(0, currentCount - 1));
-                    },
-                    () => {
-                        this.roads.removeOrder(store.x, store.y);
-                    },
-                    storeWaypointIndex
-                );
-                this.activeCars.push(carInstance);
-                const currentCount = this.carsPerHouse.get(houseKey) || 0;
-                this.carsPerHouse.set(houseKey, currentCount + 1);
-                this.houseLastSpawn.set(houseKey, Date.now());
-                break;
-            }
-        }
-    }
 
     // Load car sprites
     for (const color of car.colors) {
@@ -216,6 +112,5 @@ export default function loadCars() {
     }
     loadSprite("carShadow", "/cars/carShadow.png");
 
-    // Return CarManager instance
-    return new CarManager();
+    return car;
 }
