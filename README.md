@@ -2,9 +2,17 @@
 
 A JavaScript clone of the game *Mini-Motorways*.
 
+All assets were inspired by the real game but were created by me.
+
+
 ## Live Demo
 You can try out the live demo [here](https://nawab-as.github.io/mini-motorways)!
 
+
+## Screenshots
+
+Game:
+![game screen](./assets/screenshot.png)
 
 ## Features
 
@@ -61,4 +69,3 @@ npx http-server -p 3000
 - **Kaplay.js** - Game framework for rendering and game loop
 - **Javascript**
 
-All assets were inspired by the real game but were created by me.
