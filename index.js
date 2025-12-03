@@ -21,6 +21,143 @@ loadRoot("./assets");
 const CarManager = loadCars();
 const Roads = loadRoads();
 
+scene("menu", () => {
+    add([
+        pos(0, 0),
+        color(30, 30, 40),
+        rect(width(), height()),
+        z(-1),
+    ]);
+    
+    add([
+        text("Mini Motorways", { size: 72, font: "monospace" }),
+        pos(width() / 2, height() / 2 - 150),
+        anchor("center"),
+        color(255, 255, 255),
+    ]);
+    
+    const playButton = add([
+        pos(width() / 2, height() / 2),
+        anchor("center"),
+        rect(250, 60),
+        color(12, 72, 212),
+        area(),
+        z(10),
+    ]);
+    
+    playButton.add([
+        text("Play", { size: 36, font: "monospace" }),
+        pos(0, 4),
+        color(255, 255, 255),
+        anchor("center"),
+    ]);
+    
+    playButton.onClick(() => {
+        go("game");
+    });
+    
+    playButton.onHoverUpdate(() => {
+        playButton.color = rgb(20, 100, 255);
+    });
+    
+    playButton.onHoverEnd(() => {
+        playButton.color = rgb(12, 72, 212);
+    });
+    
+    const howToPlayButton = add([
+        pos(width() / 2, height() / 2 + 90),
+        anchor("center"),
+        rect(250, 60),
+        color(60, 60, 80),
+        area(),
+        z(10),
+    ]);
+    
+    howToPlayButton.add([
+        text("How to Play", { size: 30, font: "monospace" }),
+        pos(0, 4),
+        color(255, 255, 255),
+        anchor("center"),
+    ]);
+    
+    howToPlayButton.onClick(() => {
+        go("howtoplay");
+    });
+    
+    howToPlayButton.onHoverUpdate(() => {
+        howToPlayButton.color = rgb(80, 80, 100);
+    });
+    
+    howToPlayButton.onHoverEnd(() => {
+        howToPlayButton.color = rgb(60, 60, 80);
+    });
+});
+
+scene("howtoplay", () => {
+    add([
+        pos(0, 0),
+        color(30, 30, 40),
+        rect(width(), height()),
+        z(-1),
+    ]);
+    
+    add([
+        text("How to Play", { size: 56, font: "monospace" }),
+        pos(width() / 2, 60),
+        anchor("center"),
+        color(255, 255, 255),
+    ]);
+    
+    const instructions = [
+        "Connect houses to stores using roads",
+        "Cars will deliver orders from houses to stores",
+        "Each house can only have 2 cars at a time",
+        "Click 'Edit Roads' to add or remove roads",
+        "Stores with >5 orders turn red",
+        "If a store stays red for 30 seconds, you lose",
+        "Complete orders to earn points",
+    ];
+    
+    let yPos = 150;
+    for (const instruction of instructions) {
+        add([
+            text(instruction, { size: 22, font: "monospace" }),
+            pos(width() / 2, yPos),
+            anchor("center"),
+            color(200, 200, 200),
+        ]);
+        yPos += 50;
+    }
+    
+    const backButton = add([
+        pos(width() / 2, height() - 80),
+        anchor("center"),
+        rect(200, 50),
+        color(12, 72, 212),
+        area(),
+        z(10),
+    ]);
+    
+    backButton.add([
+        text("Back", { size: 28, font: "monospace" }),
+        pos(0, 4),
+        color(255, 255, 255),
+        anchor("center"),
+    ]);
+    
+    backButton.onClick(() => {
+        go("menu");
+    });
+    
+    backButton.onHoverUpdate(() => {
+        backButton.color = rgb(20, 100, 255);
+    });
+    
+    backButton.onHoverEnd(() => {
+        backButton.color = rgb(12, 72, 212);
+    });
+});
+
 scene("game", () => {
     // Set up game state and UI
     Roads.initGame();
@@ -112,4 +249,4 @@ scene("gameover", (data) => {
     });
 });
 
-go("game");
+go("menu");
