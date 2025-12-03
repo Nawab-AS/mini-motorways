@@ -21,6 +21,39 @@ loadRoot("./assets");
 const CarManager = loadCars();
 const Roads = loadRoads();
 
+function addSnowEffect() {
+    const snowflakes = [];
+    for (let i = 0; i < 50; i++) {
+        const snowflake = add([
+            pos(rand(0, width()), rand(-height(), height())),
+            circle(rand(1, 3)),
+            color(255, 255, 255),
+            opacity(rand(0.3, 0.8)),
+            z(1000),
+            "snowflake",
+            {
+                speed: rand(20, 60),
+                sway: rand(-15, 15),
+                swayOffset: rand(0, Math.PI * 2),
+            }
+        ]);
+        snowflakes.push(snowflake);
+    }
+    
+    onUpdate(() => {
+        for (const flake of snowflakes) {
+            if (!flake.exists()) continue;
+            flake.pos.y += flake.speed * dt();
+            flake.pos.x += Math.sin(time() + flake.swayOffset) * flake.sway * dt();
+            
+            if (flake.pos.y > height()) {
+                flake.pos.y = -10;
+                flake.pos.x = rand(0, width());
+            }
+        }
+    });
+}
+
 scene("menu", () => {
     add([
         pos(0, 0),
@@ -28,6 +61,8 @@ scene("menu", () => {
         rect(width(), height()),
         z(-1),
     ]);
+    
+    addSnowEffect();
     
     add([
         text("Mini Motorways", { size: 72, font: "monospace" }),
@@ -101,6 +136,8 @@ scene("howtoplay", () => {
         z(-1),
     ]);
     
+    addSnowEffect();
+    
     add([
         text("How to Play", { size: 56, font: "monospace" }),
         pos(width() / 2, 60),
@@ -164,6 +201,8 @@ scene("game", () => {
     Roads.setupUI();
     Roads.setupClickHandler();
     
+    addSnowEffect();
+    
     // Set up car manager
     CarManager.init(Roads);
 
@@ -193,6 +232,8 @@ scene("gameover", (data) => {
         rect(width(), height()),
         z(-1),
     ]);
+    
+    addSnowEffect();
     
     // Show "You Lost" message
     add([
