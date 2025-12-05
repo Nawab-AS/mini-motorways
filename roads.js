@@ -921,7 +921,29 @@ export default function loadRoads(...args) {
         }
 
         getAdjacentRoad(x, y) {
-            // Find a road tile next to this position
+            // Check if this is a store position (stores are 2x2)
+            const storeKey = `${x},${y}`;
+            if (this.stores.has(storeKey)) {
+                const storeData = this.stores.get(storeKey);
+                // Get the protected roads for this store based on orientation
+                const offsets = {
+                    'up': [[0, -1], [1, -1]],
+                    'down': [[0, 2], [1, 2]],
+                    'left': [[-1, 0], [-1, 1]],
+                    'right': [[2, 0], [2, 1]]
+                };
+                const roadOffsets = offsets[storeData.orientation];
+                for (const [dx, dy] of roadOffsets) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    if (this.roads.has(`${nx},${ny}`)) {
+                        return { x: nx, y: ny };
+                    }
+                }
+                return null;
+            }
+            
+            // For houses or regular positions, check immediately adjacent tiles
             for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
                 const nx = x + dx;
                 const ny = y + dy;
